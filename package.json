@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@azure/identity": "^4.13.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@stream-io/node-sdk": "^0.5.1",
     "agora-access-token": "^2.0.4",
