@@ -6,7 +6,7 @@ const { Course } = require("../data");
 router.get("/sitemap.xml", async (req, res) => {
   try {
     const baseUrl = "https://madeformanners.com";
-    const now = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const now = new Date().toISOString().split("T")[0];
 
     const staticPages = [
       { loc: `${baseUrl}/`, changefreq: "always", priority: "1.00" },

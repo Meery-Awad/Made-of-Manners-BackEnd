@@ -6,13 +6,14 @@ const cron = require("node-cron")
 const { Server } = require("socket.io");
 const sitemapRouter = require("./routes/sitemap");
 require('dotenv').config();
+const { notificationBeforeCourse } = require('./controllers/notificationController');
 
 const userRoutes = require("./routes/userRoutes");
 const courseRoutes = require("./routes/courseRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const agoraRoutes = require("./routes/agoraRoutes");
 const contactUs = require('./routes/contactUs')
-const {notificationBeforeCourse}= require('./controllers/notificationController')
+const notifications = require('./routes/notification')
 
 const { User, Course } = require("./data");
 const deleteAllUsers = async () => {
@@ -55,9 +56,18 @@ app.use(express.urlencoded({ limit: "5gb", extended: true }));
 app.use("/", sitemapRouter);
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
+
     console.log("Connected to MongoDB");
-    // deleteAllUsers();
-    //  deleteAllCourses()
+    // User.updateMany(
+    //   {},
+    //   { $set: { notifications: [] } }
+    // )
+    //   .then(result => {
+    //     console.log("All notifications cleared for all users");
+    //   })
+    //   .catch(err => console.error(err));
+    //  deleteAllUsers(); 
+    //   deleteAllCourses()
     // حذف كل الـ collections داخل القاعدة
     // const collections = await mongoose.connection.db.collections();
     // for (let collection of collections) {
@@ -96,7 +106,6 @@ cron.schedule("0 0 * * *", async () => {
       }
     }
 
-
     const users = await User.find();
 
     for (const user of users) {
@@ -127,7 +136,7 @@ cron.schedule("0 0 * * *", async () => {
     console.error("error", err);
   }
 });
-cron.schedule("*/5 * * * *", async () => {
+cron.schedule("*/20 * * * *", async () => {
   console.log("⏰ Checking for upcoming courses...");
   await notificationBeforeCourse();
 });
@@ -137,10 +146,11 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/agora", agoraRoutes);
 app.use("/api/contactUs", contactUs);
-
+app.use("/api/notification", notifications)
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
+global.io = io;
 
 io.on("connection", (socket) => {
   let currentCourseId = null;
@@ -151,9 +161,9 @@ io.on("connection", (socket) => {
   });
 
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
+  // socket.on("disconnect", () => {
+  //   console.log("User disconnected:", socket.id);
+  // });
 
 });
 

@@ -1,6 +1,5 @@
 const crypto = require("crypto");
-const { User } = require("../data");
-const { Course } = require("../data");
+const { User, Course } = require("../data");
 const { ClientSecretCredential } = require("@azure/identity");
 const { Client } = require('@microsoft/microsoft-graph-client');
 require('isomorphic-fetch');
@@ -24,62 +23,214 @@ function getGraphClient() {
   });
 }
 
+// ======= Notification for New Course =======
 exports.notificationAlert = async (req, res) => {
   try {
     const { course } = req.body;
     if (!course) return res.status(400).json({ message: "Course data is required" });
 
-    const users = await User.find({}, "email name");
+    const users = await User.find({}, "_id name email");
     if (!users.length) return res.status(200).json({ message: "No users to notify" });
 
     const client = getGraphClient();
-    if (!course.isNotLive)
-      for (const user of users) {
-        const mail = {
-          message: {
-            subject: `📢 New Course Added: ${course.name}`,
-            body: {
-              contentType: "HTML",
-              content: `
-              <div style="font-family:Arial,sans-serif;line-height:1.6;color:#333">
-                <h2>New Course Available 🎉</h2>
-                <p>Hi ${user.name}, we're excited to announce a new course on <b>${course.name}</b>!</p>
-                <p>${course.description || ""}</p>
-                <p><b>Date:</b> ${course.date} (${course.time} - ${course.endtime})</p>
-                <p><b>Price:</b> ${course.price} £</p>
-                <a href="https://madeformanners.com/courses" 
-                   style="background:#C6A662;color:white;padding:10px 18px;text-decoration:none;border-radius:6px">
-                   View Course
-                </a>
-                <br/><br/>
-                <small>This is an automated message — please do not reply.</small>
-              </div>
-            `,
-            },
-            toRecipients: [{ emailAddress: { address: user.email } }],
-          },
-
-          saveToSentItems: "true",
-
-        };
-
-        await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(mail);
+    const Notidate = new Date().toLocaleDateString('en-GB');
+    const info =
+    {
+      title: "📢 New Course Added",
+      message: `A new course (${course.name}) has been added.`,
+      courseName: course.name,
+      date: course.date,
+      time: course.time,
+      type: "course",
+      Notidate: Notidate
+    }
+    // Bulk operations to push notification to all users
+    const bulkOps = users.map(user => ({
+      updateOne: {
+        filter: { _id: user._id },
+        update: {
+          $push: {
+            notifications: info
+          }
+        }
       }
+    }));
+    await User.bulkWrite(bulkOps);
 
-    res.json({ message: "Notification sent successfully via email", notifiedUsers: users.length });
+    // Emit notifications via Socket.io
+    global.io.emit("new_course", info);
+
+    // Send email to all users
+    // for (const user of users) {
+    //   const mail = {
+    //     message: {
+    //       subject: `📢 New Course Added: ${course.name}`,
+    //       body: {
+    //         contentType: "HTML",
+    //         content: `
+    //         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#333">
+    //           <h2>New Course Available 🎉</h2>
+    //           <p>Hi ${user.name}, we're excited to announce a new course on <b>${course.name}</b>!</p>
+    //           <p>${course.description || ""}</p>
+    //           <p><b>Date:</b> ${course.date} (${course.time} - ${course.endtime})</p>
+    //           <p><b>Price:</b> ${course.price} £</p>
+    //           <a href="https://madeformanners.com/courses" 
+    //              style="background:#C6A662;color:white;padding:10px 18px;text-decoration:none;border-radius:6px">
+    //              View Course
+    //           </a>
+    //           <br/><br/>
+    //           <small>This is an automated message — please do not reply.</small>
+    //         </div>
+    //         `,
+    //       },
+    //       toRecipients: [{ emailAddress: { address: user.email } }],
+    //     },
+    //     saveToSentItems: "true",
+    //   };
+    //   await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(mail);
+    // }
+
+    res.json({ message: "Notification sent successfully", notifiedUsers: users.length });
   } catch (err) {
     console.error("❌ Error sending notification:", err);
     res.status(500).json({ message: "Server error while sending notification", error: err.message });
   }
-
 };
 
+// ======= Notification Before Course for Booked Users =======
+exports.notificationBeforeCourse = async () => {
+  try {
+    const now = new Date();
+    const client = getGraphClient();
+    const courses = await Course.find();
+
+    for (const course of courses) {
+
+      if (!course.date || !course.time || !course.bookedUsers?.length) continue;
+
+      const courseDateTime = new Date(`${course.date} ${course.time}`);
+      const diff = (courseDateTime - now) / (1000 * 60);
+
+      if (diff > 0 && diff <= 65) {
+        const bulkOps = [];
+
+        const Notidate = new Date().toLocaleDateString('en-GB');
+
+        for (const booked of course.bookedUsers) {
+          const info =
+          {
+            userId: booked.userId || booked._id || booked.id,
+            title: "⏰ Course Reminder",
+            message: `Your course (${course.name}) starts soon.`,
+            courseName: course.name,
+            date: course.date,
+            time: course.time,
+            type: "course",
+            Notidate: Notidate,
+          }
+          if (!booked.notifiedBeforeStart) {
+            bulkOps.push({
+              updateOne: {
+                filter: { _id: booked.userId || booked._id || booked.id },
+                update: {
+                  $push: {
+                    notifications: info
+                  }
+                }
+              }
+            });
+
+            // Emit real-time via Socket.io
+            global.io.emit("course_reminder", info);
+
+            // Send email
+            const mail = {
+              message: {
+                subject: `⏰ Reminder: Your course "${course.name}" starts soon!`,
+                body: {
+                  contentType: "HTML",
+                  content: `
+                <div style="font-family:Arial,sans-serif;line-height:1.6;color:#333">
+                  <h2>Course Reminder</h2>
+                  <p>Hi ${booked.name},</p>
+                  <p>This is a friendly reminder that your course <b>${course.name}</b> will start in about one hour.</p>
+                  <p><b>Date:</b> ${course.date}</p>
+                  <p><b>Time:</b> ${course.time} - ${course.endtime}</p>
+                  <a href="https://madeformanners.com/courses" 
+                     style="background:#C6A662;color:white;padding:10px 18px;text-decoration:none;border-radius:6px">
+                     Join Course
+                  </a>
+                  <br/><br/>
+                  <small>This is an automated reminder — please do not reply.</small>
+                </div>
+                `,
+                },
+                toRecipients: [{ emailAddress: { address: booked.email } }],
+              },
+              saveToSentItems: "true",
+            };
+            await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(mail);
+          }
+
+          // Apply bulk notifications in one go
+          if (bulkOps.length > 0) await User.bulkWrite(bulkOps);
+
+          booked.notifiedBeforeStart = true;
+          await course.save();
+        }
+      }
+    }
+
+    console.log("Course reminder check completed.");
+  } catch (err) {
+    console.error("Error sending course reminders:", err);
+  }
+};
 exports.contactMessageAlert = async (req, res) => {
   try {
     const { name, email, phone, message } = req.body;
-
-    if (!name || !email || !message)
+    if (!name || !email || !message || !phone)
       return res.status(400).json({ message: "All required fields must be filled" });
+
+    // ===========================
+    // Create the notification object
+    // ===========================
+    const now = new Date();
+
+    const formattedDate = now.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+    const Notidate = new Date().toLocaleDateString('en-GB');
+    const notification = {
+      title: "📩 New Contact Message",
+      message: `New contact message from ${name}`,
+      date: formattedDate,
+      data: { name, email, phone, message },
+      read: false,
+      type: "contact",
+      Notidate: Notidate
+    };
+
+    // ===========================
+    // Add notification to the admin user
+    // ===========================
+
+    const adminUser = await User.findOne({ email: "iuliana.esanu28@gmail.com" });
+
+    if (adminUser) {
+      adminUser.notifications.push(notification);
+      await adminUser.save();
+
+    }
+    global.io.emit("contact_message", notification);
+    // ===========================
+    // Send email (your existing code)
+    // ===========================
 
     const client = getGraphClient();
 
@@ -98,89 +249,30 @@ exports.contactMessageAlert = async (req, res) => {
             <div style="border-left:3px solid #C6A662;padding-left:10px;margin-top:5px">
               ${message}
             </div>
-             <a href="https://madeformanners.com/contact" 
-                   style="background:#C6A662;color:white;padding:10px 18px;text-decoration:none;border-radius:6px">
-                   View Course
-                </a>
-            <br/>
+
+            <a href="https://madeformanners.com/contact" 
+              style="background:#C6A662;color:white;padding:10px 18px;text-decoration:none;border-radius:6px">
+              View Course
+            </a>
+
+            <br/><br/>
             <small>This message was automatically forwarded from the website contact form.</small>
           </div>
           `
         },
         toRecipients: [
           { emailAddress: { address: "hello@madeformanners.com" } }
-
         ],
       },
       saveToSentItems: "true",
-
     };
 
-    await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(mail);
+    await client.api("/users/hello@madeformanners.com/sendMail").post(mail);
 
-    res.status(200).json({ message: "Contact message sent to admin successfully" });
-  } catch (err) {
-    console.error("❌ Error sending contact message:", err);
-    res.status(500).json({ message: "Server error while sending contact email", error: err.message });
+    return res.status(200).json({ message: "Message sent & notification added" });
+
+  } catch (error) {
+    console.error("Error sending contact message alert:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
-exports.notificationBeforeCourse = async () => {
-  try {
-    const now = new Date();
-    const client = getGraphClient();
-
-    // جلب كل الكورسات
-    const courses = await Course.find();
-
-    for (const course of courses) {
-      if (!course.date || !course.time || !course.bookedUsers?.length) continue;
-
-      // حساب موعد الكورس ووقته
-      const courseDateTime = new Date(`${course.date} ${course.time}`);
-      const diff = (courseDateTime - now) / (1000 * 60); 
-
-      // إذا بقي أقل من 65 دقيقة ولم يُرسل إشعار سابق
-      if (diff > 0 && diff <= 65 && !course.notifiedBeforeStart) {
-        for (const user of course.bookedUsers) {
-          const mail = {
-            message: {
-              subject: `⏰ Reminder: Your course "${course.name}" starts soon!`,
-              body: {
-                contentType: "HTML",
-                content: `
-                <div style="font-family:Arial,sans-serif;line-height:1.6;color:#333">
-                  <h2>Course Reminder</h2>
-                  <p>Hi ${user.name},</p>
-                  <p>This is a friendly reminder that your course <b>${course.name}</b> will start in about one hour.</p>
-                  <p><b>Date:</b> ${course.date}</p>
-                  <p><b>Time:</b> ${course.time} - ${course.endtime}</p>
-                  <a href="https://madeformanners.com/courses" 
-                     style="background:#C6A662;color:white;padding:10px 18px;text-decoration:none;border-radius:6px">
-                     Join Course
-                  </a>
-                  <br/><br/>
-                  <small>This is an automated reminder — please do not reply.</small>
-                </div>
-              `,
-              },
-              toRecipients: [{ emailAddress: { address: user.email } }],
-            },
-            saveToSentItems: "true",
-          };
-
-          await client.api(`/users/${SENDER_EMAIL}/sendMail`).post(mail);
-        }
-
-        // حفظ أن الإشعارات تم إرسالها حتى لا تتكرر
-        course.notifiedBeforeStart = true;
-        await course.save();
-      }
-    }
-
-    console.log("✅ Course reminder check completed.");
-  } catch (err) {
-    console.error("❌ Error sending course reminders:", err);
-  }
-};
-

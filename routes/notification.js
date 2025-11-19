@@ -5,6 +5,4 @@ const router = express.Router();
 
 router.post("/", notificationAlert);
 router.post('/contactusAlert', contactMessageAlert)
-
-
 module.exports = router;

@@ -1,61 +1,76 @@
 const mongoose = require('mongoose');
 
-// Sub-schema للكورسات داخل المستخدم
+// Sub-schema
 const courseSubSchema = new mongoose.Schema({
-    name: String,
-    description: String,
-    date: String,
-    time: String,
-    endtime: String,
-    img: String,
-    price: Number,
-    recommended: Boolean,
-    categories: [String],
-    status: String,
-    link: String,
+  name: String,
+  description: String,
+  date: String,
+  time: String,
+  endtime: String,
+  img: String,
+  price: Number,
+  recommended: Boolean,
+  categories: [String],
+  status: String,
+  link: String,
 }, { timestamps: true });
 
-// Schema للمستخدم
+const notificationsSubSchema = new mongoose.Schema({
+  title: String,
+  message: String,
+  courseName: String,
+  date: String,
+  time: String,
+  isRead: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  type: String,
+  Notidate: String
+}
+);
+
+// Schema
 const users = new mongoose.Schema({
-    name: String,
-    email: String,
-    password: String,
-    img: String,
-    courses: [courseSubSchema],
+  name: String,
+  email: String,
+  password: String,
+  img: String,
+  courses: [courseSubSchema],
+  notifications: { type: [notificationsSubSchema], default: [] }
 }, { timestamps: true });
 
 
 const courses = new mongoose.Schema({
-    name: String,
-    description: String,
-    date: String,
-    time: String,
-    endtime: String,
-    img: String,
-    price: Number,
-    recommended: Boolean,
-    link: String,
-    categories: [String],
-    notifiedBeforeStart: { type: Boolean, default: false },
+  name: String,
+  description: String,
+  date: String,
+  time: String,
+  endtime: String,
+  img: String,
+  price: Number,
+  recommended: Boolean,
+  link: String,
+  categories: [String],
 
-    joinedUsers: [
-        {
-            userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-            name: String,
-            email: String,
-            lastJoined: { type: Date, default: Date.now }
-        }
-    ],
-    bookedUsers: [
-        {
-            userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-            name: String,
-            email: String,
-            img: String,
-            bookedAt: { type: Date, default: Date.now }
 
-        }
-    ],
+  joinedUsers: [
+    {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      name: String,
+      email: String,
+      lastJoined: { type: Date, default: Date.now }
+    }
+  ],
+  bookedUsers: [
+    {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      name: String,
+      email: String,
+      img: String,
+      bookedAt: { type: Date, default: Date.now },
+      notifiedBeforeStart: { type: Boolean, default: false },
+
+    }
+  ],
 }, { timestamps: true });
 
 courses.pre("save", async function (next) {
@@ -76,7 +91,7 @@ courses.pre("save", async function (next) {
           bookedAt: new Date()
         });
       } else {
-        
+
         this.bookedUsers.push({
           name: "Julia",
           email: defaultEmail,
@@ -94,11 +109,13 @@ courses.pre("save", async function (next) {
 });
 
 const contactMessageSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    phone: String,
-    message: { type: String, required: true }
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: String,
+  message: { type: String, required: true }
 }, { timestamps: true });
+
+
 
 const User = mongoose.model('User', users);
 const Course = mongoose.model('Course', courses);

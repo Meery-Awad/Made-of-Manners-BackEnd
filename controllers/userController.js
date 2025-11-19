@@ -32,6 +32,14 @@ const upload = multer({
   limits: { fileSize: 1024 * 1024 * 1024 * 5 }
 });
 
+exports.getUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ error: "Error fetching user" });
+    }
+};
 exports.registerUser = async (req, res) => {
   try {
 
@@ -41,7 +49,7 @@ exports.registerUser = async (req, res) => {
         return res.status(500).json({ message: "Image upload error" });
       }
 
-      const { name, email, password, confirmPassword, date, time, endtime, courses } = req.body;
+      const { name, email, password, confirmPassword, date, time, endtime,img, courses , notifications } = req.body;
 
       const existingUser = await User.findOne({ email });
       if (existingUser) return res.status(400).json({ message: "User already exists" });
@@ -53,8 +61,8 @@ exports.registerUser = async (req, res) => {
         return res.status(400).json({ message: "Passwords do not match" });
 
       // upload img on cloudinary
-      const imgUrl = req.file ? req.file.path : null;
-
+   
+      const imgUrl = req.file ? req.file.path : img;
       const newUser = new User({
         name,
         email,
@@ -63,7 +71,8 @@ exports.registerUser = async (req, res) => {
         date,
         time,
         endtime,
-        courses
+        courses,
+        notifications
       });
 
       await newUser.save();
@@ -96,6 +105,7 @@ exports.loginUser = async (req, res) => {
       confirmPassword: user.confirmPassword,
       img: user.img,
       courses: user.courses,
+      notifications:user.notifications,
       token,
     });
   } catch (err) {
@@ -179,6 +189,7 @@ exports.uploadVideoLink = [
 
 exports.deleteUser = async (req, res) => {
   try {
+    console.log(req.params)
     const { id } = req.params;
     const deletedUser = await User.findByIdAndDelete(id);
 
