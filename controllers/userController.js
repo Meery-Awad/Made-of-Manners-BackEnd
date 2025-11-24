@@ -49,7 +49,7 @@ exports.registerUser = async (req, res) => {
         return res.status(500).json({ message: "Image upload error" });
       }
 
-      const { name, email, password, confirmPassword, date, time, endtime,img, courses , notifications } = req.body;
+      const { name, email, password, confirmPassword, date, time, endtime,img, courses , notifications, newNotifications } = req.body;
 
       const existingUser = await User.findOne({ email });
       if (existingUser) return res.status(400).json({ message: "User already exists" });
@@ -72,7 +72,8 @@ exports.registerUser = async (req, res) => {
         time,
         endtime,
         courses,
-        notifications
+        notifications,
+        newNotifications
       });
 
       await newUser.save();
@@ -106,6 +107,7 @@ exports.loginUser = async (req, res) => {
       img: user.img,
       courses: user.courses,
       notifications:user.notifications,
+      newNotificationsL : user.newNotifications,
       token,
     });
   } catch (err) {

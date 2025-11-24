@@ -27,7 +27,6 @@ const notificationsSubSchema = new mongoose.Schema({
   Notidate: String
 }
 );
-
 // Schema
 const users = new mongoose.Schema({
   name: String,
@@ -35,9 +34,9 @@ const users = new mongoose.Schema({
   password: String,
   img: String,
   courses: [courseSubSchema],
-  notifications: { type: [notificationsSubSchema], default: [] }
+  notifications: { type: [notificationsSubSchema], default: [] },
+  newNotifications: { type: [notificationsSubSchema], default: [] }
 }, { timestamps: true });
-
 
 const courses = new mongoose.Schema({
   name: String,

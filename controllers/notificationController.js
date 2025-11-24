@@ -31,9 +31,9 @@ exports.notificationAlert = async (req, res) => {
 
     const users = await User.find({}, "_id name email");
     if (!users.length) return res.status(200).json({ message: "No users to notify" });
-
     const client = getGraphClient();
     const Notidate = new Date().toLocaleDateString('en-GB');
+    
     const info =
     {
       title: "📢 New Course Added",
@@ -50,7 +50,8 @@ exports.notificationAlert = async (req, res) => {
         filter: { _id: user._id },
         update: {
           $push: {
-            notifications: info
+            notifications: info,
+            newNotifications:info
           }
         }
       }
@@ -134,7 +135,8 @@ exports.notificationBeforeCourse = async () => {
                 filter: { _id: booked.userId || booked._id || booked.id },
                 update: {
                   $push: {
-                    notifications: info
+                    notifications: info,
+                    newNotifications:info
                   }
                 }
               }
@@ -224,6 +226,7 @@ exports.contactMessageAlert = async (req, res) => {
 
     if (adminUser) {
       adminUser.notifications.push(notification);
+      adminUser.newNotifications.push(notification);
       await adminUser.save();
 
     }
@@ -274,5 +277,24 @@ exports.contactMessageAlert = async (req, res) => {
   } catch (error) {
     console.error("Error sending contact message alert:", error);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.markNotificationsAsRead = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.newNotifications = [];
+
+    await user.save();
+
+    return res.status(200).json({ message: "Notifications marked as read" });
+  } catch (err) {
+    console.error("Error marking notifications as read:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
   }
 };

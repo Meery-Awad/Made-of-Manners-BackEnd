@@ -136,7 +136,7 @@ cron.schedule("0 0 * * *", async () => {
     console.error("error", err);
   }
 });
-cron.schedule("*/20 * * * *", async () => {
+cron.schedule("*/30 * * * *", async () => {
   console.log("⏰ Checking for upcoming courses...");
   await notificationBeforeCourse();
 });
@@ -146,7 +146,7 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/agora", agoraRoutes);
 app.use("/api/contactUs", contactUs);
-app.use("/api/notification", notifications)
+app.use("/api/notification", notifications);
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
