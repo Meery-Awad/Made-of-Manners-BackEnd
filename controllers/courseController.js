@@ -12,6 +12,7 @@ exports.getCourses = async (req, res) => {
 
 // Get course by ID
 exports.getCourseById = async (req, res) => {
+
   try {
     const { id } = req.params;
     const course = await Course.findById(id);
@@ -39,6 +40,7 @@ exports.getJoinedUsers = async (req, res) => {
 // Add new course
 exports.addCourse = async (req, res) => {
   try {
+    
     const courseDetails = req.body;
     const course = new Course(courseDetails);
     await course.save();
@@ -66,10 +68,12 @@ exports.updateCourse = async (req, res) => {
 };
 
 // Delete course
+
+
 exports.deleteCourse = async (req, res) => {
+  
   try {
     const { id } = req.params;
-
     const deletedCourse = await Course.findByIdAndDelete(id);
     if (!deletedCourse) return res.status(404).json({ message: "Course not found" });
 

@@ -36,7 +36,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:3000",
   "https://madeformanners.com",
- 'https://madeformanners.netlify.app'
+  'https://madeformanners.netlify.app'
 ];
 
 const corsOptions = {
@@ -59,6 +59,8 @@ mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
 
     console.log("Connected to MongoDB");
+    //  deleteAllUsers(); 
+    // deleteAllCourses()
     // User.updateMany(
     //   {},
     //   { $set: { notifications: [] } }
@@ -67,8 +69,8 @@ mongoose.connect(process.env.MONGO_URI)
     //     console.log("All notifications cleared for all users");
     //   })
     //   .catch(err => console.error(err));
-    //  deleteAllUsers(); 
-    //   deleteAllCourses()
+
+
     // حذف كل الـ collections داخل القاعدة
     // const collections = await mongoose.connection.db.collections();
     // for (let collection of collections) {
@@ -88,6 +90,7 @@ mongoose.connect(process.env.MONGO_URI)
 //     // deleteAllUsers(); deleteAllCourses()
 //   })
 //   .catch((err) => console.error("MongoDB connection failed", err));
+
 cron.schedule("0 0 * * *", async () => {
   try {
     const now = new Date();

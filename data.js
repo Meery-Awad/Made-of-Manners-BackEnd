@@ -13,6 +13,7 @@ const courseSubSchema = new mongoose.Schema({
   categories: [String],
   status: String,
   link: String,
+  coursePlace: String, // 'Face-to-Face' , 'Online'
 }, { timestamps: true });
 
 const notificationsSubSchema = new mongoose.Schema({
@@ -39,18 +40,7 @@ const users = new mongoose.Schema({
 }, { timestamps: true });
 
 const courses = new mongoose.Schema({
-  name: String,
-  description: String,
-  date: String,
-  time: String,
-  endtime: String,
-  img: String,
-  price: Number,
-  recommended: Boolean,
-  link: String,
-  categories: [String],
-
-
+  ...courseSubSchema.obj,
   joinedUsers: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
