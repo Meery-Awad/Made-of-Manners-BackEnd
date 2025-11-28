@@ -78,7 +78,7 @@ mongoose.connect(process.env.MONGO_URI)
     //   console.log(`Cleared collection: ${collection.namespace}`);
     // }
 
-    // console.log("✅ All data deleted (collections emptied)");
+    // console.log(" All data deleted (collections emptied)");
     // process.exit();
   })
   .catch((err) => console.error("MongoDB connection failed", err));
@@ -135,13 +135,12 @@ cron.schedule("0 0 * * *", async () => {
       }
     }
 
-    console.log("✅ courses delated ");
   } catch (err) {
     console.error("error", err);
   }
 });
-cron.schedule("*/30 * * * *", async () => {
-  console.log("⏰ Checking for upcoming courses...");
+cron.schedule("*/5 * * * *", async () => {
+  console.log("Checking for upcoming courses...");
   await notificationBeforeCourse();
 });
 
